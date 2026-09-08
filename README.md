@@ -46,4 +46,22 @@ Pin a released tag for reproducible deployments.
   git tag vX.Y.Z
   git push origin tag vX.Y.Z
   ```
-* Consumers pin `?ref=vX.Y.Z` in their `module` block's `source` to pick up the new version.
+* This triggers a GitHub Action that publishes the module to the `pequod` org's
+  Pulumi Cloud Terraform module registry as `pequod/ec2-iam/aws@X.Y.Z`
+  (see `.github/workflows/tag.yml`).
+* Consumers can then reference the module either way:
+  * From the Pulumi Cloud registry (recommended — versioned via the registry protocol):
+    ```hcl
+    module "ec2_iam" {
+      source  = "tf.pulumi.com/pequod/ec2-iam/aws"
+      version = "X.Y.Z"
+      # ...
+    }
+    ```
+  * Directly from this repo, pinned to a tag:
+    ```hcl
+    module "ec2_iam" {
+      source = "github.com/pulumi-pequod/component-ec2-iam-tf?ref=vX.Y.Z"
+      # ...
+    }
+    ```

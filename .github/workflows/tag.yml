@@ -1,0 +1,70 @@
+name: Tag Release Workflow
+
+on:
+  push:
+    tags:
+      - '*' # Trigger on any tag push.
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  publish-module:
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+
+    ### Publishes this repo's Terraform module as a new version in the
+    ### pequod org's Pulumi Cloud Terraform module registry (tf.pulumi.com).
+    ### This is the Terraform-module equivalent of the `pulumi package publish`
+    ### step used by sibling component-* repos (which publish multi-language
+    ### Pulumi component packages, not raw Terraform modules).
+    env:
+      PULUMI_ORG: 'pequod' # The Pulumi organization to publish the module to.
+      MODULE_NAME: 'ec2-iam' # Registry module name -> pequod/ec2-iam/aws.
+      MODULE_PROVIDER: 'aws' # Registry "provider"/system segment.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }} # Checkout the specific tag that triggered the workflow
+          fetch-depth: 0 # Ensures the build matches the git tag.
+
+      - name: Authenticate to Pulumi
+        uses: pulumi/auth-actions@v1
+        with:
+          organization: ${{ env.PULUMI_ORG }}
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          scope: admin
+
+      # Determine the version to use - either the triggered tag or latest tag for manual runs.
+      # The Pulumi Cloud module registry expects bare semver (no leading "v").
+      - name: Determine Module Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            TAG="${{ github.ref_name }}"
+            echo "Using triggered tag: $TAG"
+          else
+            TAG=$(git tag --sort=-version:refname | head -1)
+            echo "Manual run: Using latest tag: $TAG"
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .github/scripts/upload-module/go.mod
+
+      # Publish if this is a tag push.
+      - name: Publish Module to Pulumi Cloud Registry
+        if: github.event_name == 'push'
+        run: |
+          echo "Publishing ${{ env.PULUMI_ORG }}/${{ env.MODULE_NAME }}/${{ env.MODULE_PROVIDER }}@${{ steps.version.outputs.version }} to tf.pulumi.com."
+          go -C .github/scripts/upload-module run . \
+            -org "${{ env.PULUMI_ORG }}" \
+            -name "${{ env.MODULE_NAME }}" \
+            -provider "${{ env.MODULE_PROVIDER }}" \
+            -version "${{ steps.version.outputs.version }}" \
+            -path .

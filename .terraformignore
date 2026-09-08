@@ -1,0 +1,5 @@
+# Exclude repo/CI plumbing from the published module package — only the
+# Terraform module itself (root *.tf files, README) should be uploaded to
+# the Pulumi Cloud module registry.
+.git/
+.github/
