@@ -31,6 +31,32 @@ jobs:
           ref: ${{ github.ref }} # Checkout the specific tag that triggered the workflow
           fetch-depth: 0 # Ensures the build matches the git tag.
 
+      - name: Debug OIDC token claims
+        run: |
+          for AUD in "urn:pulumi:org:pequod" "api.pulumi.com" ""; do
+            echo "=== audience: '${AUD}' ==="
+            if [ -n "$AUD" ]; then
+              URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUD}"
+            else
+              URL="${ACTIONS_ID_TOKEN_REQUEST_URL}"
+            fi
+            RESP=$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "$URL")
+            TOK=$(echo "$RESP" | jq -r '.value // empty')
+            if [ -z "$TOK" ]; then
+              echo "no token returned: $RESP"
+              continue
+            fi
+            PAYLOAD=$(echo "$TOK" | cut -d. -f2)
+            # base64url -> base64, pad, decode
+            PAYLOAD="${PAYLOAD//-/+}"
+            PAYLOAD="${PAYLOAD//_//}"
+            case $(( ${#PAYLOAD} % 4 )) in
+              2) PAYLOAD="${PAYLOAD}==" ;;
+              3) PAYLOAD="${PAYLOAD}=" ;;
+            esac
+            echo "$PAYLOAD" | base64 -d 2>/dev/null | jq '{iss, aud, sub, repository, repository_owner, ref, event_name, workflow_ref}'
+          done
+
       - name: Authenticate to Pulumi
         uses: pulumi/auth-actions@v2
         with:
