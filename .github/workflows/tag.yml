@@ -32,11 +32,11 @@ jobs:
           fetch-depth: 0 # Ensures the build matches the git tag.
 
       - name: Authenticate to Pulumi
-        uses: pulumi/auth-actions@v1
+        uses: pulumi/auth-actions@v2
         with:
           organization: ${{ env.PULUMI_ORG }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
-          scope: admin
+          # scope: admin
 
       # Determine the version to use - either the triggered tag or latest tag for manual runs.
       # The Pulumi Cloud module registry expects bare semver (no leading "v").
