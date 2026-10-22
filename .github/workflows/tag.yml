@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0 # Ensures the build matches the git tag.
 
       - name: Authenticate to Pulumi
-        uses: pulumi/auth-actions@v2
+        uses: pulumi/auth-actions@v1
         with:
           organization: ${{ env.PULUMI_ORG }}
           requested-token-type: urn:pulumi:token-type:access_token:organization
