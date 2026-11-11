@@ -11,8 +11,13 @@ terraform {
 
   required_providers {
     aws = {
-      source  = "hashicorp/aws"
-      version = ">= 6.42.0"
+      source = "hashicorp/aws"
+      # Pinned so the aws provider baked into the published Pulumi package is
+      # deterministic. Keep in line with the aws version that the other HCL
+      # modules used alongside this one resolve to (for example
+      # terraform-aws-modules/s3-bucket/aws, which floats at ">= 6.42"), so
+      # `pulumi install` only has to download and run one aws provider binary.
+      version = "6.72.0"
     }
   }
 }
